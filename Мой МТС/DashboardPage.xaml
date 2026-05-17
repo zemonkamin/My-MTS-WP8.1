@@ -1,0 +1,93 @@
+<phone:PhoneApplicationPage
+    x:Class="Мой_МТС.DashboardPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:phone="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone"
+    xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
+    SupportedOrientations="Portrait" Orientation="Portrait"
+    FontFamily="{StaticResource PhoneFontFamilyNormal}"
+    Foreground="White"
+    shell:SystemTray.IsVisible="True"
+    shell:SystemTray.BackgroundColor="Black"
+    shell:SystemTray.ForegroundColor="White">
+
+    <Grid Background="Black">
+        <phone:Pivot x:Name="MainPivot" Title="мой мтс" Foreground="White" Background="Black" SelectionChanged="MainPivot_SelectionChanged">
+
+            <phone:PivotItem Header="аккаунт">
+                <Grid Background="Black">
+                    <ScrollViewer x:Name="AccountContent" Visibility="Collapsed">
+                        <StackPanel Margin="20,6,20,24">
+                            <TextBlock Text="Баланс" FontSize="18" Foreground="#FF9AA0A6"/>
+                            <TextBlock x:Name="BalanceText" Text="—" FontSize="52" FontWeight="SemiBold" Margin="0,0,0,14"/>
+
+                            <StackPanel Margin="0,0,0,13">
+                                <TextBlock x:Name="TariffNameText" Text="Тариф" FontSize="25" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="TariffPriceText" Text="—" FontSize="21" Foreground="#FF9AA0A6" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                <Border Height="1" Background="#FF2A2A2A" Margin="0,14,0,0"/>
+                            </StackPanel>
+
+                            <StackPanel x:Name="AccountStack"/>
+                            <Button Content="выйти из аккаунта" Click="LogoutButton_Click" Margin="0,8,0,0"/>
+                            <TextBlock x:Name="AccountStatusText" TextWrapping="Wrap" Foreground="#FF9AA0A6" FontSize="20" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </phone:PivotItem>
+
+            <phone:PivotItem Header="пакеты">
+                <Grid Background="Black">
+                    <ScrollViewer x:Name="PackagesContent" Visibility="Collapsed">
+                        <StackPanel Margin="20,6,20,24">
+                            <TextBlock Text="Остатки пакетов" FontSize="32" FontWeight="SemiBold" Margin="0,0,0,6" TextWrapping="Wrap"/>
+                            <Border Height="1" Background="#FF2A2A2A" Margin="0,0,0,13"/>
+                            <StackPanel x:Name="PackageStack"/>
+                            <TextBlock x:Name="PackagesEmptyText" Text="" TextWrapping="Wrap" Foreground="#FF9AA0A6" FontSize="20"/>
+                            <TextBlock x:Name="PackagesStatusText" TextWrapping="Wrap" Foreground="#FF9AA0A6" FontSize="20" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </phone:PivotItem>
+
+            <phone:PivotItem Header="расходы">
+                <Grid Background="Black">
+                    <ScrollViewer x:Name="ExpensesContent" Visibility="Collapsed">
+                        <StackPanel Margin="20,6,20,24">
+                            <TextBlock Text="Расходы" FontSize="32" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="ExpensesSummaryText" Text="—" FontSize="21" Foreground="#FF9AA0A6" Margin="0,4,0,10" TextWrapping="Wrap"/>
+                            <Border Height="1" Background="#FF2A2A2A" Margin="0,0,0,14"/>
+
+                            <TextBlock Text="Категории" FontSize="25" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <StackPanel x:Name="ExpenseCategoriesStack"/>
+
+                            <TextBlock Text="Последние операции" FontSize="25" FontWeight="SemiBold" Margin="0,14,0,8"/>
+                            <StackPanel x:Name="TransactionsStack"/>
+                            <TextBlock x:Name="ExpensesEmptyText" Text="" TextWrapping="Wrap" Foreground="#FF9AA0A6" FontSize="20"/>
+                            <TextBlock x:Name="ExpensesStatusText" TextWrapping="Wrap" Foreground="#FF9AA0A6" FontSize="20" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </phone:PivotItem>
+
+            <phone:PivotItem Header="услуги">
+                <Grid Background="Black">
+                    <ScrollViewer x:Name="ServicesContent" Visibility="Collapsed">
+                        <StackPanel Margin="20,6,20,24">
+                            <TextBlock Text="Подключённые услуги" FontSize="32" FontWeight="SemiBold" Margin="0,0,0,6" TextWrapping="Wrap"/>
+                            <Border Height="1" Background="#FF2A2A2A" Margin="0,0,0,13"/>
+                            <StackPanel Margin="0,0,0,13">
+                                <TextBlock Text="Следующее списание" FontSize="18" Foreground="#FF9AA0A6"/>
+                                <TextBlock x:Name="NextChargeText" Text="—" FontSize="21" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                                <Border Height="1" Background="#FF2A2A2A" Margin="0,14,0,0"/>
+                            </StackPanel>
+                            <StackPanel x:Name="ServicesStack"/>
+                            <TextBlock x:Name="ServicesEmptyText" Text="" TextWrapping="Wrap" Foreground="#FF9AA0A6" FontSize="20"/>
+                            <TextBlock x:Name="ServicesStatusText" TextWrapping="Wrap" Foreground="#FF9AA0A6" FontSize="20" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </phone:PivotItem>
+
+        </phone:Pivot>
+    </Grid>
+</phone:PhoneApplicationPage>

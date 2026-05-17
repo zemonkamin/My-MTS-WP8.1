@@ -1,0 +1,21 @@
+﻿<phone:PhoneApplicationPage
+    x:Class="Мой_МТС.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:phone="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone"
+    xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
+    SupportedOrientations="Portrait" Orientation="Portrait"
+    FontFamily="{StaticResource PhoneFontFamilyNormal}"
+    Foreground="White"
+    shell:SystemTray.IsVisible="True"
+    shell:SystemTray.BackgroundColor="Black"
+    shell:SystemTray.ForegroundColor="White">
+
+    <Grid Background="Black">
+        <StackPanel VerticalAlignment="Center" Margin="24,0">
+            <TextBlock Text="Мой МТС" FontSize="44" FontWeight="SemiBold" Foreground="White"/>
+            <TextBlock Text="загрузка личного кабинета" Margin="0,12,0,0" FontSize="24" Foreground="#FF9AA0A6"/>
+            <ProgressBar IsIndeterminate="True" Margin="0,28,0,0"/>
+        </StackPanel>
+    </Grid>
+</phone:PhoneApplicationPage>
