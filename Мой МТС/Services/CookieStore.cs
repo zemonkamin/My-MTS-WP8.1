@@ -32,18 +32,25 @@ namespace Мой_МТС.Services
         {
             CookieContainer container = new CookieContainer();
             DateTime now = DateTime.UtcNow;
+            List<Uri> hosts = KnownCookieUris(uri);
 
             for (int i = 0; i < _cookies.Count; i++)
             {
                 StoredCookie stored = _cookies[i];
                 if (stored.ExpiresUtc.HasValue && stored.ExpiresUtc.Value <= now)
                     continue;
-                if (!Matches(uri.Host, stored.Domain))
-                    continue;
                 if (!IsValidCookieName(stored.Name))
                     continue;
 
-                TryAddToContainer(container, uri, stored);
+                // HttpWebRequest сохраняет один CookieContainer на всю цепочку redirect.
+                // Поэтому заранее кладём в него куки не только стартового lk.mts.ru,
+                // но и login/united-auth/federation, иначе silent SSO после перезапуска
+                // теряет сохранённую auth-куку при переходе на другой MTS-хост.
+                for (int h = 0; h < hosts.Count; h++)
+                {
+                    if (Matches(hosts[h].Host, stored.Domain))
+                        TryAddToContainer(container, hosts[h], stored);
+                }
             }
 
             return container;
@@ -120,7 +127,7 @@ namespace Мой_МТС.Services
 
         private static void TryAddToContainer(CookieContainer container, Uri uri, StoredCookie stored)
         {
-            if (stored == null || !IsUsefulCookie(stored.Name) || !IsSafeCookieValue(stored.Value))
+            if (stored == null || !IsTrustedMtsDomain(stored.Domain) || !IsValidCookieName(stored.Name) || !IsSafeCookieValue(stored.Value))
                 return;
 
             try
@@ -169,7 +176,7 @@ namespace Мой_МТС.Services
         {
             if (cookie == null || !IsValidCookieName(cookie.Name) || String.IsNullOrEmpty(cookie.Domain))
                 return false;
-            if (!IsUsefulCookie(cookie.Name) || !IsSafeCookieValue(cookie.Value))
+            if (!IsTrustedMtsDomain(cookie.Domain) || !IsSafeCookieValue(cookie.Value))
                 return false;
 
             for (int i = _cookies.Count - 1; i >= 0; i--)
@@ -318,24 +325,13 @@ namespace Мой_МТС.Services
             list.Add(uri);
         }
 
-        private static bool IsUsefulCookie(string name)
+        private static bool IsTrustedMtsDomain(string domain)
         {
-            if (String.IsNullOrWhiteSpace(name))
+            string d = NormalizeDomain(domain);
+            if (String.IsNullOrEmpty(d))
                 return false;
 
-            string n = name.ToLowerInvariant();
-            return n.StartsWith("mts", StringComparison.Ordinal) ||
-                   n.IndexOf("sso", StringComparison.Ordinal) >= 0 ||
-                   n.IndexOf("auth", StringComparison.Ordinal) >= 0 ||
-                   n.IndexOf("session", StringComparison.Ordinal) >= 0 ||
-                   n.IndexOf("csrf", StringComparison.Ordinal) >= 0 ||
-                   n.IndexOf("xsrf", StringComparison.Ordinal) >= 0 ||
-                   n.IndexOf("amlb", StringComparison.Ordinal) >= 0 ||
-                   n.IndexOf("qrator", StringComparison.Ordinal) >= 0 ||
-                   n == "stickyid" ||
-                   n == "iplanetdirectorypro" ||
-                   n == "route" ||
-                   n == "jsessionid";
+            return d == "mts.ru" || d.EndsWith(".mts.ru", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsSafeCookieValue(string value)
@@ -407,7 +403,8 @@ namespace Мой_МТС.Services
                 if (Int64.TryParse(p[4], out ticks) && ticks > 0)
                     cookie.ExpiresUtc = new DateTime(ticks, DateTimeKind.Utc);
 
-                if ((!cookie.ExpiresUtc.HasValue || cookie.ExpiresUtc.Value > DateTime.UtcNow) && IsValidCookieName(cookie.Name))
+                if ((!cookie.ExpiresUtc.HasValue || cookie.ExpiresUtc.Value > DateTime.UtcNow) &&
+                    IsTrustedMtsDomain(cookie.Domain) && IsValidCookieName(cookie.Name) && IsSafeCookieValue(cookie.Value))
                     _cookies.Add(cookie);
             }
         }

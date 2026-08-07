@@ -8,7 +8,7 @@ namespace Мой_МТС.Services
         private static readonly MtsHttpClient HttpClient = new MtsHttpClient(CookieStore);
 
         public static readonly MtsAuthService Auth = new MtsAuthService(HttpClient);
-        public static readonly MtsLkService Lk = new MtsLkService(HttpClient);
+        public static readonly MtsLkService Lk = new MtsLkService(HttpClient, Auth);
 
         public static AccountDashboard LastDashboard { get; set; }
     }

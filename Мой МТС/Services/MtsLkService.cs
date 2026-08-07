@@ -53,10 +53,12 @@ namespace Мой_МТС.Services
 }";
 
         private readonly MtsHttpClient _http;
+        private readonly MtsAuthService _auth;
 
-        public MtsLkService(MtsHttpClient http)
+        public MtsLkService(MtsHttpClient http, MtsAuthService auth)
         {
             _http = http;
+            _auth = auth;
         }
 
         public async Task<AccountDashboard> LoadAccountAsync()
@@ -234,9 +236,31 @@ namespace Мой_МТС.Services
             return text.Length > 80 ? text.Substring(0, 80) + "..." : text;
         }
 
+        private async Task<HttpResult> GetWithSessionAsync(string url, IDictionary<string, string> headers)
+        {
+            await _auth.TryRefreshSessionIfNeededAsync();
+
+            HttpResult result = await _http.GetAsync(url, headers);
+            if (MtsAuthService.IsSessionRejected(result) && await _auth.TryRefreshSessionAsync())
+                result = await _http.GetAsync(url, headers);
+
+            return result;
+        }
+
+        private async Task<HttpResult> PostJsonWithSessionAsync(string url, string json, IDictionary<string, string> headers)
+        {
+            await _auth.TryRefreshSessionIfNeededAsync();
+
+            HttpResult result = await _http.PostJsonAsync(url, json, headers);
+            if (MtsAuthService.IsSessionRejected(result) && await _auth.TryRefreshSessionAsync())
+                result = await _http.PostJsonAsync(url, json, headers);
+
+            return result;
+        }
+
         private async Task<JsonValue> LkGetJsonAsync(string path)
         {
-            HttpResult result = await _http.GetAsync(BuildLkUrl(path, null), LkHeaders());
+            HttpResult result = await GetWithSessionAsync(BuildLkUrl(path, null), LkHeaders());
             EnsureAuthorized(result);
             if (String.IsNullOrWhiteSpace(result.Body))
             {
@@ -256,7 +280,7 @@ namespace Мой_МТС.Services
         {
             Dictionary<string, string> startParams = new Dictionary<string, string>();
             startParams["overwriteCache"] = "false";
-            HttpResult start = await _http.GetAsync(BuildLkUrl(startPath, startParams), LkHeaders());
+            HttpResult start = await GetWithSessionAsync(BuildLkUrl(startPath, startParams), LkHeaders());
             EnsureAuthorized(start);
 
             if (String.IsNullOrWhiteSpace(start.Body))
@@ -287,7 +311,7 @@ namespace Мой_МТС.Services
                 await Task.Delay(650);
                 Dictionary<string, string> p = new Dictionary<string, string>();
                 p["for"] = forPath;
-                HttpResult check = await _http.GetAsync(BuildLkUrl("/api/longtask/check/" + Uri.EscapeDataString(taskId), p), LkHeaders());
+                HttpResult check = await GetWithSessionAsync(BuildLkUrl("/api/longtask/check/" + Uri.EscapeDataString(taskId), p), LkHeaders());
                 EnsureAuthorized(check);
 
                 if (check.StatusCode == 204 || String.IsNullOrWhiteSpace(check.Body))
@@ -311,7 +335,7 @@ namespace Мой_МТС.Services
             payload["variables"] = variables ?? new JsonObject();
             payload["query"] = JsonUtil.Primitive(query);
 
-            HttpResult result = await _http.PostJsonAsync(GraphQlUrl, payload.ToString(), GraphQlHeaders());
+            HttpResult result = await PostJsonWithSessionAsync(GraphQlUrl, payload.ToString(), GraphQlHeaders());
             EnsureAuthorized(result);
 
             JsonValue root = JsonUtil.ParseOrNull(result.Body);
@@ -348,7 +372,7 @@ namespace Мой_МТС.Services
 
         private static void EnsureAuthorized(HttpResult result)
         {
-            if (result.StatusCode == 401 || result.StatusCode == 403)
+            if (MtsAuthService.IsSessionRejected(result))
                 throw new UnauthorizedAccessException("Сессия МТС истекла. Нужно войти заново.");
         }
 

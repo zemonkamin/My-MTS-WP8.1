@@ -13,12 +13,14 @@ namespace Мой_МТС.Services
         private const string DefaultGoto = "https://lk.mts.ru/";
         private const string DefaultScope = "profile account phone slaves:all slaves:profile sub email user_address identity_doc personal_data openid offline offline_access";
         private const string Cid = "mts-w-payment";
+        private static readonly TimeSpan SessionRefreshInterval = TimeSpan.FromMinutes(25);
 
         private readonly MtsHttpClient _http;
         private string _authUrl;
         private string _refererUrl;
         private JsonValue _state;
         private string _phone;
+        private DateTime? _lastSessionRefreshUtc;
 
         public MtsAuthService(MtsHttpClient http)
         {
@@ -37,6 +39,7 @@ namespace Мой_МТС.Services
             _authUrl = null;
             _refererUrl = null;
             _phone = null;
+            _lastSessionRefreshUtc = null;
         }
 
         public async Task BeginLoginAsync(string phone)
@@ -94,8 +97,95 @@ namespace Мой_МТС.Services
 
         public async Task WarmUpAsync()
         {
-            await _http.GetAsync("https://lk.mts.ru/", LkHeaders());
-            await _http.GetAsync("https://lk.mts.ru/api/login/refreshCsrfToken", LkHeaders());
+            bool restored = await RefreshSessionCoreAsync();
+            if (!restored)
+                throw new UnauthorizedAccessException("Не удалось закрепить сессию МТС после входа.");
+        }
+
+        public async Task<bool> RestoreSavedSessionAsync()
+        {
+            if (!HasSavedSession)
+                return false;
+
+            return await RefreshSessionCoreAsync();
+        }
+
+        public async Task TryRefreshSessionIfNeededAsync()
+        {
+            if (!HasSavedSession)
+                return;
+
+            if (_lastSessionRefreshUtc.HasValue &&
+                DateTime.UtcNow - _lastSessionRefreshUtc.Value < SessionRefreshInterval)
+                return;
+
+            try
+            {
+                await RefreshSessionCoreAsync();
+            }
+            catch
+            {
+                // Не блокируем обычный запрос из-за временной ошибки keep-alive.
+            }
+        }
+
+        public async Task<bool> TryRefreshSessionAsync()
+        {
+            if (!HasSavedSession)
+                return false;
+
+            try
+            {
+                return await RefreshSessionCoreAsync();
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private async Task<bool> RefreshSessionCoreAsync()
+        {
+            HttpResult home = await _http.GetAsync("https://lk.mts.ru/", LkHeaders());
+            if (IsSessionRejected(home))
+                return false;
+            if (!home.IsSuccess)
+                throw new InvalidOperationException("LK МТС вернул HTTP " + home.StatusCode.ToString());
+
+            HttpResult refresh = await _http.GetAsync("https://lk.mts.ru/api/login/refreshCsrfToken", LkHeaders());
+            if (IsSessionRejected(refresh))
+                return false;
+            if (!refresh.IsSuccess)
+                throw new InvalidOperationException("Обновление сессии МТС вернуло HTTP " + refresh.StatusCode.ToString());
+
+            HttpResult verify = await _http.GetAsync("https://lk.mts.ru/api/login/user-info", LkHeaders());
+            if (IsSessionRejected(verify))
+                return false;
+            if (!verify.IsSuccess)
+                throw new InvalidOperationException("Проверка сессии МТС вернула HTTP " + verify.StatusCode.ToString());
+
+            if (String.IsNullOrWhiteSpace(verify.Body) || JsonUtil.ParseOrNull(verify.Body) == null)
+                return false;
+
+            _lastSessionRefreshUtc = DateTime.UtcNow;
+            return true;
+        }
+
+        internal static bool IsSessionRejected(HttpResult result)
+        {
+            if (result == null)
+                return true;
+            if (result.StatusCode == 401 || result.StatusCode == 403)
+                return true;
+
+            Uri uri = result.ResponseUri;
+            if (uri == null)
+                return false;
+
+            string host = uri.Host == null ? String.Empty : uri.Host.ToLowerInvariant();
+            return host == "login.mts.ru" ||
+                   host == "united-auth.ssl.mts.ru" ||
+                   host.EndsWith(".login.mts.ru", StringComparison.Ordinal);
         }
 
         private async Task<JsonValue> FinishAsync(JsonValue data)
